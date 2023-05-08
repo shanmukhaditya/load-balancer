@@ -10,10 +10,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#define PORT 4000
 #define RESPONSE "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\nHello, world!\r\n"
 
-int main() {
+int main(int argc, char *argv[]) {
+    int PORT = atoi(argv[2]);
     int server_fd, new_socket;
     struct sockaddr_in address;
     int opt = 1;

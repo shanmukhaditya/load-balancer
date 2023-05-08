@@ -123,6 +123,14 @@ bool is_server_up(Server server)
     }
 }
 
+int hash_function(std::string key) {
+    int sum = 0;
+    for (char c : key) {
+        sum += c;
+    }
+    return (sum % 5) + 4000;
+}
+
 void handle_request(int client_socket)
 {
     char buffer[BUFFER_SIZE];
@@ -157,12 +165,13 @@ void handle_request(int client_socket)
         cout << num_start << " " << path.length() << " "<< stoi(path.substr(num_start + 1, path.length())) << endl;
     }
     else if(path == "/test"){
-
-        if (is_server_up(servers[4000]))
+        int key = hash_function(path);
+        if (is_server_up(servers[key]))
         {
-            const char *request = "GET / HTTP/1.1\r\nHost: 127.0.0.1:4000\r\n\r\n";
+            string request_string = "GET / HTTP/1.1\r\nHost: 127.0.0.1:" + to_string(key) + "\r\n\r\n";
+            const char *request = request_string.c_str();
             int request_len = strlen(request);
-            int bytes_sent = send(servers[4000].server_socket, request, request_len, 0);
+            int bytes_sent = send(servers[key].server_socket, request, request_len, 0);
             if (bytes_sent != request_len)
             {
                 cerr << "Failed to send request to server\n";
@@ -172,7 +181,7 @@ void handle_request(int client_socket)
             char response_buffer[BUFFER_SIZE];
             int bytes_received = 0;
             int total_bytes_received = 0;
-            while ((bytes_received = recv(servers[4000].server_socket, response_buffer, BUFFER_SIZE - 1, 0)) > 0)
+            while ((bytes_received = recv(servers[key].server_socket, response_buffer, BUFFER_SIZE - 1, 0)) > 0)
             {
                 total_bytes_received += bytes_received;
                 response_buffer[bytes_received] = '\0';
@@ -267,17 +276,19 @@ void run_server()
 
 int main()
 {
-    int server_socket = create_socket();
-    struct sockaddr_in server_address;
-    server_address.sin_family = AF_INET;
-    server_address.sin_port = htons(SERVER_PORT);
-    server_address.sin_addr.s_addr = inet_addr(SERVER_IP.c_str());
+    for(int i=0; i < 5; i++){
+        int server_socket = create_socket();
+        struct sockaddr_in server_address;
+        server_address.sin_family = AF_INET;
+        server_address.sin_port = htons(SERVER_PORT + i);
+        server_address.sin_addr.s_addr = inet_addr(SERVER_IP.c_str());
 
-    Server s1;
-    s1.server_socket = server_socket;
-    s1.server_address = server_address;
-    servers[4000] = s1;
-    connect(s1.server_socket, (struct sockaddr *)&s1.server_address, sizeof(s1.server_address));
+        Server s1;
+        s1.server_socket = server_socket;
+        s1.server_address = server_address;
+        servers[SERVER_PORT + i] = s1;
+        connect(s1.server_socket, (struct sockaddr *)&s1.server_address, sizeof(s1.server_address));
+    }
     run_server();
     return 0;
 }
